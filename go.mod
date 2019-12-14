@@ -1,0 +1,11 @@
+module github.com/wolffcm/fluxcui
+
+go 1.13
+
+require (
+	github.com/exrook/drawille-go v0.0.0-20180117021400-68d036fca70a
+	github.com/jroimartin/gocui v0.4.0
+	github.com/mattn/go-runewidth v0.0.7 // indirect
+	github.com/nsf/termbox-go v0.0.0-20190817171036-93860e161317 // indirect
+	github.com/spf13/cobra v0.0.5
+)
