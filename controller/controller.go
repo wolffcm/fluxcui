@@ -7,7 +7,9 @@ import (
 )
 
 type Config struct {
-
+	Addr               string
+	InsecureSkipVerify bool
+	Token              string
 }
 
 type controller struct {
@@ -21,7 +23,11 @@ func New(cfg *Config) (fluxcui.Controller, error) {
 	c := &controller{
 		cfg: cfg,
 	}
-	m, err := model.NewFluxModel()
+	m, err := model.NewFluxModel(&model.Config{
+		Addr:               cfg.Addr,
+		InsecureSkipVerify: cfg.InsecureSkipVerify,
+		Token:              cfg.Token,
+	})
 	if err != nil {
 		return nil, err
 	}

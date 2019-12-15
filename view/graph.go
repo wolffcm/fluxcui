@@ -9,13 +9,24 @@ import (
 	"github.com/wolffcm/fluxcui"
 )
 
+func doGraphView(g *gocui.Gui, x0, y0, x1, y1 int) error {
+	v, err := g.SetView(graphView, x0, y0, x1, y1)
+	if err != nil && err != gocui.ErrUnknownView {
+		return err
+	}
+	if err == gocui.ErrUnknownView {
+		v.Title = "FluxCUI"
+	}
+	return nil
+}
+
 type canvasPoint struct {
 	X, Y float64
 }
 
 type linegraph struct {
 	vxsize, vysize int
-	ts time.Time
+	ts             time.Time
 
 	canvas drawille.Canvas
 }
@@ -27,7 +38,7 @@ func newLinegraph() *linegraph {
 }
 
 func (lg *linegraph) update(g *gocui.Gui, m fluxcui.Model) error {
-	v, err := g.View("linegraph")
+	v, err := g.View(graphView)
 	if err != nil {
 		return err
 	}
@@ -66,7 +77,6 @@ func (lg *linegraph) update(g *gocui.Gui, m fluxcui.Model) error {
 
 	return nil
 
-
 }
 
 type pointTransformer func(point fluxcui.TimePoint) canvasPoint
@@ -81,8 +91,8 @@ func getTransformer(ss []fluxcui.Series, cxd, cyd float64) pointTransformer {
 		if s.Data[0].T.UnixNano() < minT {
 			minT = s.Data[0].T.UnixNano()
 		}
-		if s.Data[nPts - 1].T.UnixNano() > maxT {
-			maxT = s.Data[nPts - 1].T.UnixNano()
+		if s.Data[nPts-1].T.UnixNano() > maxT {
+			maxT = s.Data[nPts-1].T.UnixNano()
 		}
 	}
 

@@ -9,7 +9,7 @@ func TestFluxData_Query(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err:= m.Query(`
+	if err := m.Query(`
 from(bucket: "my-bucket")
   |> range(start: -5m)
   |> filter(fn: (r) => r._measurement == "diskio")

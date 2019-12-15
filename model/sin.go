@@ -9,13 +9,13 @@ import (
 
 type sin struct {
 	series []fluxcui.Series
-	ts time.Time
+	ts     time.Time
 }
 
 func NewModel() fluxcui.Model {
 	return &sin{
 		series: genData(),
-		ts: time.Now(),
+		ts:     time.Now(),
 	}
 }
 
@@ -68,10 +68,9 @@ func genSeries(step float64) []fluxcui.TimePoint {
 	points := make([]fluxcui.TimePoint, numPts)
 	startTime := time.Now().Truncate(time.Minute)
 	for i := 0; i < numPts; i++ {
-		t := startTime.Add(time.Minute*time.Duration(i))
+		t := startTime.Add(time.Minute * time.Duration(i))
 		v := math.Sin(float64(i) * step)
 		points[i] = fluxcui.TimePoint{T: t, V: v}
 	}
 	return points
 }
-

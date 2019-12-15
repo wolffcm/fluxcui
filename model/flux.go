@@ -14,19 +14,26 @@ import (
 	"time"
 )
 
-type fluxData struct {
-	querier repl.Querier
-	deps flux.Dependencies
-
-	ts time.Time
-	s []fluxcui.Series
+type Config struct {
+	Addr               string
+	InsecureSkipVerify bool
+	Token              string
 }
 
-func NewFluxModel() (fluxcui.Model, error) {
+type fluxData struct {
+	cfg     *Config
+	querier repl.Querier
+	deps    flux.Dependencies
+
+	ts time.Time
+	s  []fluxcui.Series
+}
+
+func NewFluxModel(cfg *Config) (fluxcui.Model, error) {
 	qs := &http.FluxQueryService{
-		Addr:               "http://localhost:9999",
-		Token:              "vjtk_WwsUAl8cNcgzPm7XWp8rZVtDiwShcqb3o5B7Zt-a5a358JY9eTo78-Y5B9RW2QfnSnGuHJp6pyE7knM6g==",
-		InsecureSkipVerify: false,
+		Addr:               cfg.Addr,
+		Token:              cfg.Token,
+		InsecureSkipVerify: cfg.InsecureSkipVerify,
 	}
 	orgID, err := influxdb.IDFromString("fbe7cf21e65601a1")
 	if err != nil {
@@ -38,7 +45,7 @@ func NewFluxModel() (fluxcui.Model, error) {
 	}
 	return &fluxData{
 		querier: q,
-		deps: flux.NewDefaultDependencies(),
+		deps:    flux.NewDefaultDependencies(),
 	}, nil
 }
 
@@ -113,6 +120,3 @@ func (f *fluxData) Query(fluxSrc string) error {
 func (f *fluxData) Series() []fluxcui.Series {
 	return f.s
 }
-
-
-
