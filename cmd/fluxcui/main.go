@@ -5,8 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wolffcm/fluxcui/model"
-	"github.com/wolffcm/fluxcui/view"
+	"github.com/wolffcm/fluxcui/controller"
 )
 
 var cmd = &cobra.Command{
@@ -21,10 +20,12 @@ func main() {
 	}
 }
 
-func run(cmd *cobra.Command, args []string) {
-	m := model.NewModel()
-	v := view.NewView(m)
-	if err := v.Run(); err != nil {
-		panic(err)
+func run(cmd *cobra.Command, _ []string) {
+	c, err := controller.New(&controller.Config{})
+	if err != nil {
+		cmd.PrintErr(err)
+	}
+	if err := c.Run(); err != nil {
+		cmd.PrintErr(err)
 	}
 }

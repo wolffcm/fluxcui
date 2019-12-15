@@ -15,6 +15,7 @@ type Series struct {
 }
 
 type Model interface {
+	Query(fluxSrc string) error
 	Series() []Series
 }
 
@@ -24,4 +25,5 @@ type View interface {
 
 type Controller interface {
 	Query(fluxSrc string) error
+	Run() error
 }

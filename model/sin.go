@@ -7,16 +7,20 @@ import (
 	"github.com/wolffcm/fluxcui"
 )
 
-type fluxData struct {
+type sin struct {
 	series []fluxcui.Series
 }
 
 func NewModel() fluxcui.Model {
-	return &fluxData{series: genData()}
+	return &sin{series: genData()}
 }
 
-func (fd *fluxData) Series() []fluxcui.Series {
-	return fd.series
+func (s *sin) Query(fluxSrc string) error {
+	return nil
+}
+
+func (s *sin) Series() []fluxcui.Series {
+	return s.series
 }
 
 func genData() []fluxcui.Series {
