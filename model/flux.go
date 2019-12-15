@@ -15,9 +15,10 @@ import (
 )
 
 type fluxData struct {
-	 querier repl.Querier
+	querier repl.Querier
 	deps flux.Dependencies
 
+	ts time.Time
 	s []fluxcui.Series
 }
 
@@ -41,6 +42,10 @@ func NewFluxModel() (fluxcui.Model, error) {
 	}, nil
 }
 
+func (f *fluxData) Timestamp() time.Time {
+	return f.ts
+}
+
 func (f *fluxData) Query(fluxSrc string) error {
 	ast, err := flux.Parse(fluxSrc)
 	if err != nil {
@@ -57,6 +62,7 @@ func (f *fluxData) Query(fluxSrc string) error {
 	}
 	defer ri.Release()
 
+	f.s = f.s[0:0]
 	for ri.More() {
 		r := ri.Next()
 		ti := r.Tables()
@@ -100,6 +106,7 @@ func (f *fluxData) Query(fluxSrc string) error {
 	if err := ri.Err(); err != nil {
 		return err
 	}
+	f.ts = time.Now()
 	return nil
 }
 

@@ -17,6 +17,7 @@ type Series struct {
 type Model interface {
 	Query(fluxSrc string) error
 	Series() []Series
+	Timestamp() time.Time
 }
 
 type View interface {

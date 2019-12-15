@@ -2,10 +2,8 @@ package view
 
 import (
 	"fmt"
-	"math"
 	"time"
 
-	"github.com/exrook/drawille-go"
 	"github.com/jroimartin/gocui"
 	"github.com/wolffcm/fluxcui"
 )
@@ -18,7 +16,8 @@ type cui struct {
 	cfg *Config
 	m fluxcui.Model
 	c fluxcui.Controller
-	cv drawille.Canvas
+
+	lg *linegraph
 }
 
 func NewView(cfg *Config, m fluxcui.Model, c fluxcui.Controller) fluxcui.View {
@@ -26,7 +25,7 @@ func NewView(cfg *Config, m fluxcui.Model, c fluxcui.Controller) fluxcui.View {
 		cfg: cfg,
 		m: m,
 		c: c,
-		cv: drawille.NewCanvas(),
+		lg: newLinegraph(),
 	}
 }
 
@@ -44,13 +43,10 @@ func (c *cui) Run() error {
 
 	g.SetManagerFunc(c.layout)
 
-	if err := g.SetKeybinding("control", 'q', gocui.ModNone, quit); err != nil {
-		return err
-	}
 	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, c.nextView); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("control", gocui.MouseLeft, gocui.ModNone, c.controlMouseClick); err != nil {
+	if err := c.setControlPanelKeybindings(g); err != nil {
 		return err
 	}
 
@@ -81,7 +77,9 @@ func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
 }
 
 func (c *cui) layout(g *gocui.Gui) error {
-	writeMessage(g, "calling layout...")
+	if _, err := g.View("errors"); err == nil {
+		mustWriteMessage(g, "calling layout...")
+	}
 	maxX, maxY := g.Size()
 
 	row1y := maxY - int(float64(maxY) * .2)
@@ -137,8 +135,7 @@ func (c *cui) layout(g *gocui.Gui) error {
 		errPanel.Autoscroll = true
 	}
 
-	// TODO(cwolff): only recompute this graph if size changes
-	if err := c.writeView(linegraph); err != nil {
+	if err := c.lg.update(g, c.m); err != nil {
 		return err
 	}
 	return nil
@@ -148,36 +145,6 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
-func (c *cui) controlMouseClick(g *gocui.Gui, v *gocui.View) error {
-	var err error
-	if _, err = setCurrentViewOnTop(g, v.Name()); err != nil {
-		return err
-	}
-	_, cy := v.Cursor()
-	var line string
-	if line, err = v.Line(cy); err != nil {
-		line = ""
-	}
-
-	switch line {
-	case "Run":
-		if err := writeMessage(g, "executing query..."); err != nil {
-			return err
-		}
-		ev, err := g.View("editor")
-		if err != nil {
-			return err
-		}
-		q := ev.Buffer()
-		if err := c.c.Query(q); err != nil {
-			if err := writeError(g, err); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
 
 func writeError(g *gocui.Gui, userErr error) error {
 	return writeMessage(g, userErr.Error())
@@ -195,75 +162,8 @@ func writeMessage(g *gocui.Gui, msg string) error {
 	return nil
 }
 
-
-type canvasPoint struct {
-	X, Y float64
-}
-
-func (c *cui) writeView(v *gocui.View) error {
-	c.cv.Clear()
-
-	ss := c.m.Series()
-	vxd, vyd := v.Size()
-	cxd, cyd := vxd*2, vyd*4
-	xformer := getTransformer(ss, float64(cxd), float64(cyd))
-	for _, s := range ss {
-		tps := s.Data
-		oldPt := xformer(tps[0])
-		for _, tp := range tps[1:] {
-			cp := xformer(tp)
-			c.cv.DrawLine(oldPt.X, oldPt.Y, cp.X, cp.Y)
-			oldPt = cp
-		}
-	}
-
-	v.Clear()
-	if _, err := v.Write([]byte(c.cv.String())); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type pointTransformer func(point fluxcui.TimePoint) canvasPoint
-
-func getTransformer(ss []fluxcui.Series, cxd, cyd float64) pointTransformer {
-	cxd--
-	cyd--
-
-	minT, maxT := int64(math.MaxInt64), int64(math.MinInt64)
-	for _, s := range ss {
-		nPts := len(s.Data)
-		if s.Data[0].T.UnixNano() < minT {
-			minT = s.Data[0].T.UnixNano()
-		}
-		if s.Data[nPts - 1].T.UnixNano() > maxT {
-			maxT = s.Data[nPts - 1].T.UnixNano()
-		}
-	}
-
-	txLen := maxT - minT
-	xScale := cxd / float64(txLen)
-	xTranslate := -minT
-
-	minY, maxY := math.MaxFloat64, -math.MaxFloat64
-	for _, s := range ss {
-		tps := s.Data
-		for _, tp := range tps {
-			minY = math.Min(minY, tp.V)
-			maxY = math.Max(maxY, tp.V)
-		}
-	}
-
-	tyLen := maxY - minY
-	yScale := cyd / tyLen
-	yTranslate := -minY
-
-	return func(tp fluxcui.TimePoint) canvasPoint {
-		t := tp.T.UnixNano()
-		return canvasPoint{
-			X: float64(t+xTranslate) * xScale,
-			Y: cyd - ((tp.V + yTranslate) * yScale),
-		}
+func mustWriteMessage(g *gocui.Gui, msg string) {
+	if err := writeMessage(g, msg); err != nil {
+		panic(err)
 	}
 }

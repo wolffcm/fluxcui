@@ -9,10 +9,18 @@ import (
 
 type sin struct {
 	series []fluxcui.Series
+	ts time.Time
 }
 
 func NewModel() fluxcui.Model {
-	return &sin{series: genData()}
+	return &sin{
+		series: genData(),
+		ts: time.Now(),
+	}
+}
+
+func (s *sin) Timestamp() time.Time {
+	return s.ts
 }
 
 func (s *sin) Query(fluxSrc string) error {
