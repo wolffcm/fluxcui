@@ -3,6 +3,8 @@ package model
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/influxdata/flux"
 	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/lang"
@@ -11,7 +13,6 @@ import (
 	"github.com/influxdata/influxdb/http"
 	"github.com/influxdata/influxdb/query"
 	"github.com/wolffcm/fluxcui"
-	"time"
 )
 
 type Config struct {
