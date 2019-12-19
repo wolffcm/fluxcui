@@ -7,16 +7,28 @@ import (
 	"github.com/wolffcm/fluxcui"
 )
 
-type fluxData struct {
+type sin struct {
 	series []fluxcui.Series
+	ts     time.Time
 }
 
 func NewModel() fluxcui.Model {
-	return &fluxData{series: genData()}
+	return &sin{
+		series: genData(),
+		ts:     time.Now(),
+	}
 }
 
-func (fd *fluxData) Series() []fluxcui.Series {
-	return fd.series
+func (s *sin) Timestamp() time.Time {
+	return s.ts
+}
+
+func (s *sin) Query(fluxSrc string) error {
+	return nil
+}
+
+func (s *sin) Series() []fluxcui.Series {
+	return s.series
 }
 
 func genData() []fluxcui.Series {
@@ -56,10 +68,9 @@ func genSeries(step float64) []fluxcui.TimePoint {
 	points := make([]fluxcui.TimePoint, numPts)
 	startTime := time.Now().Truncate(time.Minute)
 	for i := 0; i < numPts; i++ {
-		t := startTime.Add(time.Minute*time.Duration(i))
+		t := startTime.Add(time.Minute * time.Duration(i))
 		v := math.Sin(float64(i) * step)
 		points[i] = fluxcui.TimePoint{T: t, V: v}
 	}
 	return points
 }
-

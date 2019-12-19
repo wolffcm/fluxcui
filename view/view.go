@@ -1,22 +1,31 @@
 package view
 
 import (
-	"math"
+	"fmt"
+	"time"
 
-	"github.com/exrook/drawille-go"
 	"github.com/jroimartin/gocui"
 	"github.com/wolffcm/fluxcui"
 )
 
-type cui struct {
-	m fluxcui.Model
-	cv drawille.Canvas
+type Config struct {
+	EditorText string
 }
 
-func NewView(m fluxcui.Model) fluxcui.View {
+type cui struct {
+	cfg *Config
+	m   fluxcui.Model
+	c   fluxcui.Controller
+
+	lg *linegraph
+}
+
+func NewView(cfg *Config, m fluxcui.Model, c fluxcui.Controller) fluxcui.View {
 	return &cui{
-		m: m,
-		cv: drawille.NewCanvas(),
+		cfg: cfg,
+		m:   m,
+		c:   c,
+		lg:  newLinegraph(),
 	}
 }
 
@@ -27,137 +36,119 @@ func (c *cui) Run() error {
 	}
 	defer g.Close()
 
+	g.Highlight = true
+	g.Cursor = true
+	g.Mouse = true
+	g.SelFgColor = gocui.ColorGreen
 	g.SetManagerFunc(c.layout)
 
-	if err := g.SetKeybinding("", 'q', gocui.ModNone, quit); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, c.nextView); err != nil {
+		return err
+	}
+	if err := c.setControlPanelKeybindings(g); err != nil {
+		return err
+	}
+	if err := c.setEditorKeybindings(g); err != nil {
 		return err
 	}
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		return err
 	}
-
 	return nil
 }
 
+const (
+	controlView = "control"
+	editorView  = "editor"
+	logView     = "log"
+	graphView   = "graph"
+)
+
 func (c *cui) layout(g *gocui.Gui) error {
+	if _, err := g.View(logView); err == nil {
+		mustWriteMessage(g, "layout")
+	}
 	maxX, maxY := g.Size()
-	if v, err := g.SetView("hello", 2, 1, maxX - 3, maxY - 3); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		if err := c.writeView(v); err != nil {
-			return err
-		}
+
+	row1y := maxY - int(float64(maxY)*.2)
+	if maxY-row1y < 12 {
+		row1y = maxY - 12
+	}
+
+	if err := doGraphView(g, 0, 0, maxX-1, row1y-1); err != nil {
+		return err
+	}
+
+	edX := 10
+	if err := doControlView(g, 0, row1y, edX-1, maxY-1); err != nil {
+		return err
+	}
+
+	errPanelX := maxX - (maxX / 3)
+
+	if err := c.doEditorView(g, edX, row1y, errPanelX-1, maxY-1); err != nil {
+		return err
+	}
+
+	if err := c.doLogView(g, errPanelX, row1y, maxX-1, maxY-1); err != nil {
+		return err
+	}
+
+	if err := c.lg.update(g, c.m); err != nil {
+		return err
 	}
 	return nil
+}
+
+func (c *cui) nextView(g *gocui.Gui, v *gocui.View) error {
+	var newView string
+	switch n := v.Name(); n {
+	case controlView:
+		newView = editorView
+	case editorView:
+		newView = controlView
+	}
+	if _, err := setCurrentViewOnTop(g, newView); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setcurrentView(g *gocui.Gui, v *gocui.View) error {
+	_, err := setCurrentViewOnTop(g, v.Name())
+	return err
+}
+
+func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
+	if _, err := g.SetCurrentView(name); err != nil {
+		return nil, err
+	}
+	return g.SetViewOnTop(name)
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
-type canvasPoint struct {
-	X, Y float64
+func writeError(g *gocui.Gui, userErr error) error {
+	return writeMessage(g, userErr.Error())
 }
 
-func (c *cui) writeView(v *gocui.View) error {
-	c.cv.Clear()
-
-	ss := c.m.Series()
-	vxd, vyd := v.Size()
-	cxd, cyd := vxd*2, vyd*4
-	xformer := getTransformer(ss, float64(cxd), float64(cyd))
-	for _, s := range ss {
-		tps := s.Data
-		oldPt := xformer(tps[0])
-		for _, tp := range tps[1:] {
-			cp := xformer(tp)
-			c.cv.DrawLine(oldPt.X, oldPt.Y, cp.X, cp.Y)
-			oldPt = cp
-		}
-	}
-
-	if _, err := v.Write([]byte(c.cv.String())); err != nil {
+func writeMessage(g *gocui.Gui, msg string) error {
+	v, err := g.View(logView)
+	if err != nil {
 		return err
 	}
-
+	ts := time.Now().Format(time.Stamp)
+	if _, err := fmt.Fprintf(v, "%v: %v\n", ts, msg); err != nil {
+		return err
+	}
 	return nil
 }
 
-type pointTransformer func(point fluxcui.TimePoint) canvasPoint
-
-func getTransformer(ss []fluxcui.Series, cxd, cyd float64) pointTransformer {
-	cxd--
-	cyd--
-
-	minT, maxT := int64(math.MaxInt64), int64(math.MinInt64)
-	for _, s := range ss {
-		nPts := len(s.Data)
-		if s.Data[0].T.UnixNano() < minT {
-			minT = s.Data[0].T.UnixNano()
-		}
-		if s.Data[nPts - 1].T.UnixNano() > maxT {
-			maxT = s.Data[nPts - 1].T.UnixNano()
-		}
+func mustWriteMessage(g *gocui.Gui, msg string) {
+	if err := writeMessage(g, msg); err != nil {
+		panic(err)
 	}
-
-	txLen := maxT - minT
-	xScale := cxd / float64(txLen)
-	xTranslate := -minT
-
-	minY, maxY := math.MaxFloat64, -math.MaxFloat64
-	for _, s := range ss {
-		tps := s.Data
-		for _, tp := range tps {
-			minY = math.Min(minY, tp.V)
-			maxY = math.Max(maxY, tp.V)
-		}
-	}
-
-	tyLen := maxY - minY
-	yScale := cyd / tyLen
-	yTranslate := -minY
-
-	return func(tp fluxcui.TimePoint) canvasPoint {
-		t := tp.T.UnixNano()
-		return canvasPoint{
-			X: float64(t+xTranslate) * xScale,
-			Y: cyd - ((tp.V + yTranslate) * yScale),
-		}
-	}
-}
-
-func scaleToCanvas(tps []fluxcui.TimePoint, cxd, cyd float64) []canvasPoint {
-	cxd--
-	cyd--
-
-	// Assume data sorted by time.
-	numPts := len(tps)
-	minT := tps[0].T.UnixNano()
-	maxT := tps[numPts - 1].T.UnixNano()
-
-	txLen := maxT - minT
-	xScale := cxd / float64(txLen)
-	xTranslate := -minT
-
-	minY, maxY := math.MaxFloat64, -math.MaxFloat64
-	for _, tp := range tps {
-		minY = math.Min(minY, tp.V)
-		maxY = math.Max(maxY, tp.V)
-	}
-
-	tyLen := maxY - minY
-	yScale := cyd / tyLen
-	yTranslate := -minY
-
-	cps := make([]canvasPoint, numPts)
-	for i, tp := range tps {
-		t := tp.T.UnixNano()
-		cps[i] = canvasPoint{
-			X: float64(t+xTranslate) * xScale,
-			Y: cyd - ((tp.V + yTranslate) * yScale),
-		}
-	}
-	return cps
 }
