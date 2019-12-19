@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/wolffcm/fluxcui/controller"
 )
 
