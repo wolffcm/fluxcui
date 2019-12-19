@@ -91,12 +91,8 @@ func (c *cui) layout(g *gocui.Gui) error {
 		return err
 	}
 
-	if errPanel, err := g.SetView(logView, errPanelX, row1y, maxX-1, maxY-1); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		errPanel.Title = "log"
-		errPanel.Autoscroll = true
+	if err := c.doLogView(g, errPanelX, row1y, maxX-1, maxY-1); err != nil {
+		return err
 	}
 
 	if err := c.lg.update(g, c.m); err != nil {

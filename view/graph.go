@@ -1,11 +1,13 @@
 package view
 
 import (
+	"fmt"
 	"math"
 	"time"
 
 	"github.com/exrook/drawille-go"
 	"github.com/jroimartin/gocui"
+	"github.com/logrusorgru/aurora"
 	"github.com/wolffcm/fluxcui"
 )
 
@@ -45,16 +47,16 @@ func (lg *linegraph) update(g *gocui.Gui, m fluxcui.Model) error {
 
 	vxd, vyd := v.Size()
 	if lg.vxsize == vxd && lg.vysize == vyd && !m.Timestamp().After(lg.ts) {
-		mustWriteMessage(g, "skipping update (nothing to do)")
+		mustWriteMessage(g, "skipping update")
 		return nil
 	} else {
 		mustWriteMessage(g, "updating")
 	}
 
+	cxd, cyd := vxd*2, vyd*4
 	lg.canvas.Clear()
 
 	ss := m.Series()
-	cxd, cyd := vxd*2, vyd*4
 	xformer := getTransformer(ss, float64(cxd), float64(cyd))
 	for _, s := range ss {
 		tps := s.Data
@@ -67,7 +69,7 @@ func (lg *linegraph) update(g *gocui.Gui, m fluxcui.Model) error {
 	}
 
 	v.Clear()
-	if _, err := v.Write([]byte(lg.canvas.String())); err != nil {
+	if _, err := fmt.Fprintf(v, "%v", aurora.Bold(aurora.Green(lg.canvas.String()))); err != nil {
 		return err
 	}
 
