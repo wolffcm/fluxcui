@@ -5,7 +5,8 @@ import (
 )
 
 func TestFluxData_Query(t *testing.T) {
-	m, err := NewFluxModel()
+	c := &Config{}
+	m, err := NewFluxModel(c)
 	if err != nil {
 		t.Fatal(err)
 	}
