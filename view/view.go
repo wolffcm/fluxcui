@@ -1,9 +1,6 @@
 package view
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/jroimartin/gocui"
 	"github.com/wolffcm/fluxcui"
 )
@@ -17,7 +14,7 @@ type cui struct {
 	m   fluxcui.Model
 	c   fluxcui.Controller
 
-	lg *linegraph
+	lg *lineGraph
 }
 
 func NewView(cfg *Config, m fluxcui.Model, c fluxcui.Controller) fluxcui.View {
@@ -25,12 +22,12 @@ func NewView(cfg *Config, m fluxcui.Model, c fluxcui.Controller) fluxcui.View {
 		cfg: cfg,
 		m:   m,
 		c:   c,
-		lg:  newLinegraph(),
+		lg:  newLineGraph(),
 	}
 }
 
 func (c *cui) Run() error {
-	g, err := gocui.NewGui(gocui.OutputNormal)
+	g, err := gocui.NewGui(gocui.Output256)
 	if err != nil {
 		return err
 	}
@@ -129,26 +126,4 @@ func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
 
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
-}
-
-func writeError(g *gocui.Gui, userErr error) error {
-	return writeMessage(g, userErr.Error())
-}
-
-func writeMessage(g *gocui.Gui, msg string) error {
-	v, err := g.View(logView)
-	if err != nil {
-		return err
-	}
-	ts := time.Now().Format(time.Stamp)
-	if _, err := fmt.Fprintf(v, "%v: %v\n", ts, msg); err != nil {
-		return err
-	}
-	return nil
-}
-
-func mustWriteMessage(g *gocui.Gui, msg string) {
-	if err := writeMessage(g, msg); err != nil {
-		panic(err)
-	}
 }
