@@ -5,6 +5,10 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 )
 
+const (
+	grey = -1
+)
+
 func getPalette(numColors int) map[int]func(string) string {
 	keypoints := GradientTable{
 		{MustParseHex("#31c0f6"), 0.0},
@@ -14,17 +18,20 @@ func getPalette(numColors int) map[int]func(string) string {
 
 	p := make(map[int]func(string) string)
 	for i := 0; i < numColors; i++ {
-		f := float64(i) / float64(numColors - 1)
+		f := float64(i) / float64(numColors-1)
 		c := keypoints.GetInterpolatedColorFor(f)
 		r, g, b := c.RGB255()
 		p[i] = func(s string) string {
 			return rgbterm.FgString(s, r, g, b)
 		}
 	}
+	p[grey] = func(s string) string {
+		return rgbterm.FgString(s, 64, 64, 64)
+	}
 	return p
 }
 
-var nineteenEightyFour =  GradientTable{
+var nineteenEightyFour = GradientTable{
 	{MustParseHex("#31c0f6"), 0.0},
 	{MustParseHex("#ff7e27"), 0.5},
 	{MustParseHex("#a500a5"), 1.0},
@@ -66,4 +73,3 @@ func MustParseHex(s string) colorful.Color {
 	}
 	return c
 }
-

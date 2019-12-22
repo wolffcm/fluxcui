@@ -40,3 +40,10 @@ func mustWriteMessage(g *gocui.Gui, msg string) {
 		panic(err)
 	}
 }
+
+func mustWriteMessagef(g *gocui.Gui, format string, args ...interface{}) {
+	msg := fmt.Sprintf(fmt.Sprintf(format, args...))
+	if err := writeMessage(g, msg); err != nil {
+		panic(err)
+	}
+}

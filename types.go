@@ -14,6 +14,15 @@ type Series struct {
 	Data []TimePoint
 }
 
+func IsEmpty(ss []Series) bool {
+	for _, s := range ss {
+		for _, _ = range s.Data {
+			return false
+		}
+	}
+	return true
+}
+
 type Model interface {
 	Query(fluxSrc string) error
 	Series() []Series

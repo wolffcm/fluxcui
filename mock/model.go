@@ -29,7 +29,7 @@ func (m Model) Series() []fluxcui.Series {
 		shift := 2.0 * math.Pi * (float64(i) / float64(numSeries))
 		for j := 0; j < pointsPerSeries; j++ {
 			t := m.Timestamp().Add(-dur)
-			increment := (dur * time.Duration(j)) / time.Duration(pointsPerSeries);
+			increment := (dur * time.Duration(j)) / time.Duration(pointsPerSeries)
 			t = t.Add(increment)
 			x := 2.0 * math.Pi * (float64(j) / float64(pointsPerSeries))
 			x += shift

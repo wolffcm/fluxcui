@@ -81,7 +81,10 @@ func (f *fluxData) Query(fluxSrc string) error {
 			}
 			ti := execute.ColIdx("_time", t.Cols())
 			if ti < 0 {
-				return errors.New("missing _time column")
+				ti = execute.ColIdx("_stop", t.Cols())
+				if ti < 0 {
+					return errors.New("missing _time column")
+				}
 			}
 			vi := execute.ColIdx("_value", t.Cols())
 			if ti < 0 {

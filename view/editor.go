@@ -2,7 +2,7 @@ package view
 
 import (
 	"fmt"
-	
+
 	"github.com/jroimartin/gocui"
 )
 

@@ -7,6 +7,7 @@ import (
 	"github.com/wolffcm/fluxcui"
 	"io"
 	"math"
+	"sort"
 	"time"
 )
 
@@ -62,15 +63,34 @@ func (lg *lineGraph) update(g *gocui.Gui, m fluxcui.Model) error {
 	lg.vySize = vyd
 
 	return nil
-
 }
 
 func (lg *lineGraph) render(m fluxcui.Model, xd, yd int, w io.Writer) error {
 	ss := m.Series()
+	if fluxcui.IsEmpty(ss) {
+		return nil
+	}
+
 	palette := getPalette(len(ss))
 	lg.canvas.Clear(drawille.SetPalette(palette))
 
-	translator := getTranslator(ss, float64(xd), float64(yd))
+	md := getMetadata(ss)
+	translator := getTranslator(ss, md, float64(xd), float64(yd))
+
+	xTicks := chooseXTicks(md)
+	for _, xt := range xTicks {
+		cp0 := translator(fluxcui.TimePoint{T: xt, V: md.minV})
+		cp1 := translator(fluxcui.TimePoint{T: xt, V: md.maxV})
+		lg.canvas.DrawLine(cp0.X, cp0.Y, cp1.X, cp1.Y, grey)
+	}
+
+	yTicks := chooseYTicks(md)
+	for _, yt := range yTicks {
+		cp0 := translator(fluxcui.TimePoint{T: md.minT, V: yt})
+		cp1 := translator(fluxcui.TimePoint{T: md.maxT, V: yt})
+		lg.canvas.DrawLine(cp0.X, cp0.Y, cp1.X, cp1.Y, grey)
+	}
+
 	for i, s := range ss {
 		tps := s.Data
 		oldPt := translator(tps[0])
@@ -79,6 +99,20 @@ func (lg *lineGraph) render(m fluxcui.Model, xd, yd int, w io.Writer) error {
 			lg.canvas.DrawLine(oldPt.X, oldPt.Y, cp.X, cp.Y, i)
 			oldPt = cp
 		}
+	}
+
+	for _, x := range xTicks {
+		txt := x.Format(time.RFC3339)
+		cp := translator(fluxcui.TimePoint{T: x, V: md.minV})
+		ln := len(txt)
+		cp.X -= float64(ln/2) * 2
+		lg.canvas.SetText(int(cp.X), int(cp.Y), txt, grey)
+	}
+
+	for _, y := range yTicks {
+		txt := fmt.Sprintf("%v", y)
+		cp := translator(fluxcui.TimePoint{T: md.minT, V: y})
+		lg.canvas.SetText(0, int(cp.Y), txt, grey)
 	}
 
 	if _, err := fmt.Fprint(w, lg.canvas.String()); err != nil {
@@ -90,37 +124,47 @@ func (lg *lineGraph) render(m fluxcui.Model, xd, yd int, w io.Writer) error {
 
 type pointTranslator func(point fluxcui.TimePoint) canvasPoint
 
-func getTranslator(ss []fluxcui.Series, cxd, cyd float64) pointTranslator {
-	cxd--
-	cyd--
+type Metadata struct {
+	minT, maxT time.Time
+	minV, maxV float64
+}
 
-	minT, maxT := int64(math.MaxInt64), int64(math.MinInt64)
-	for _, s := range ss {
-		nPts := len(s.Data)
-		if s.Data[0].T.UnixNano() < minT {
-			minT = s.Data[0].T.UnixNano()
-		}
-		if s.Data[nPts-1].T.UnixNano() > maxT {
-			maxT = s.Data[nPts-1].T.UnixNano()
-		}
-	}
-
-	txLen := maxT - minT
-	xScale := cxd / float64(txLen)
-	xTranslate := -minT
-
-	minY, maxY := math.MaxFloat64, -math.MaxFloat64
+func getMetadata(ss []fluxcui.Series) *Metadata {
+	minT, maxT := time.Unix(0, math.MaxInt64), time.Unix(0, math.MinInt64)
+	minV, maxV := math.MaxFloat64, -math.MaxFloat64
 	for _, s := range ss {
 		tps := s.Data
 		for _, tp := range tps {
-			minY = math.Min(minY, tp.V)
-			maxY = math.Max(maxY, tp.V)
+			minV = math.Min(minV, tp.V)
+			maxV = math.Max(maxV, tp.V)
+			if tp.T.After(maxT) {
+				maxT = tp.T
+			}
+			if tp.T.Before(minT) {
+				minT = tp.T
+			}
 		}
 	}
 
-	tyLen := maxY - minY
+	return &Metadata{
+		minT: minT,
+		maxT: maxT,
+		minV: minV,
+		maxV: maxV,
+	}
+}
+
+func getTranslator(ss []fluxcui.Series, md *Metadata, cxd, cyd float64) pointTranslator {
+	cxd--
+	cyd--
+
+	txLen := md.maxT.Sub(md.minT)
+	xScale := cxd / float64(txLen)
+	xTranslate := -md.minT.UnixNano()
+
+	tyLen := md.maxV - md.minV
 	yScale := cyd / tyLen
-	yTranslate := -minY
+	yTranslate := -md.minV
 
 	return func(tp fluxcui.TimePoint) canvasPoint {
 		t := tp.T.UnixNano()
@@ -129,4 +173,65 @@ func getTranslator(ss []fluxcui.Series, cxd, cyd float64) pointTranslator {
 			Y: cyd - ((tp.V + yTranslate) * yScale),
 		}
 	}
+}
+
+func chooseXTicks(md *Metadata) []time.Time {
+	start := md.minT
+	stop := md.maxT
+
+	d := stop.Sub(start)
+
+	ds := []time.Duration{
+		time.Hour * 24 * 7,
+		time.Hour * 48,
+		time.Hour * 24,
+		time.Hour * 6,
+		time.Hour,
+		time.Minute * 15,
+		time.Minute * 5,
+		time.Minute,
+		time.Second * 15,
+		time.Second * 5,
+		time.Second,
+		time.Millisecond,
+		time.Microsecond,
+		time.Nanosecond,
+	}
+
+	i := sort.Search(len(ds), func(i int) bool {
+		if d > ds[i] {
+			return true
+		}
+		return false
+	})
+	xTicks := make([]time.Time, 0, 5)
+	if i >= len(ds) {
+		// long interval (more than a week) choose ticks at 1/3 and 2/3 of time range
+		t1 := d / 3
+		t2 := 2 * d / 3
+		xTicks = append(xTicks, md.minT.Add(t1), md.minT.Add(t2))
+	} else {
+		truncDur := ds[i]
+		for tick := start.Truncate(truncDur); tick.Before(stop); tick = tick.Add(truncDur) {
+			if tick.After(start) {
+				xTicks = append(xTicks, tick)
+			}
+		}
+	}
+
+	return xTicks
+}
+
+func chooseYTicks(md *Metadata) []float64 {
+	yRange := md.maxV - md.minV
+	unit := math.Pow(10.0, math.Trunc(math.Log10(yRange)))
+	yTicks := make([]float64, 0, 5)
+	v := unit * math.Trunc(md.minV/unit)
+	for ; v < md.maxV; v += unit {
+		if v > md.minV {
+			yTicks = append(yTicks, v)
+		}
+	}
+
+	return yTicks
 }

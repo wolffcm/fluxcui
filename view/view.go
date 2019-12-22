@@ -63,11 +63,13 @@ const (
 )
 
 func (c *cui) layout(g *gocui.Gui) error {
-	if _, err := g.View(logView); err == nil {
-		mustWriteMessage(g, "layout")
-	}
-	maxX, maxY := g.Size()
+	defer func() {
+		if p := recover(); p != nil {
+			mustWriteMessagef(g, "panic: %v", p)
+		}
+	}()
 
+	maxX, maxY := g.Size()
 	row1y := maxY - int(float64(maxY)*.2)
 	if maxY-row1y < 12 {
 		row1y = maxY - 12
