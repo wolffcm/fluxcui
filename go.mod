@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
+	github.com/google/go-cmp v0.3.1
 	github.com/influxdata/flux v0.57.0
 	github.com/influxdata/influxdb v1.5.1-0.20191213220711-88468822e23d
 	github.com/jroimartin/gocui v0.4.0
@@ -14,3 +15,5 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/wolffcm/drawille-go v0.0.0-20191221022539-4afb83ac080b
 )
+
+replace github.com/wolffcm/drawille-go => ../drawille-go

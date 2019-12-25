@@ -434,9 +434,6 @@ github.com/uber/jaeger-lib v1.5.0+incompatible/go.mod h1:ComeNDZlWwrWnDv8aPp0Ba6
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/willf/bitset v1.1.9 h1:GBtFynGY9ZWZmEC9sWuu41/7VBXPFCOAbCbqTflOg9c=
 github.com/willf/bitset v1.1.9/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
-github.com/wolffcm/drawille-go v0.0.0-20180117021400-68d036fca70a/go.mod h1:xn/B7znbQI/9G2A+uis4OqJK4tD0/fIJ/U7E+LWUrfg=
-github.com/wolffcm/drawille-go v0.0.0-20191221022539-4afb83ac080b h1:LK2guubcFOFVF3UI/5Pq2yXhIW5HhlHjYTblrXCiZ20=
-github.com/wolffcm/drawille-go v0.0.0-20191221022539-4afb83ac080b/go.mod h1:NezBV4WiDhXdCsakWPa06YViuEZ0gBOqWEjIYIp+5ME=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yudai/gojsondiff v1.0.0 h1:27cbfqXLVEJ1o8I6v3y9lg8Ydm53EKqHXAOMxEGlCOA=
 github.com/yudai/gojsondiff v1.0.0/go.mod h1:AY32+k2cwILAkW1fbgxQ5mUmMiZFgLIV+FBNExI05xg=

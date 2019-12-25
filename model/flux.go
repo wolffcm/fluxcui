@@ -3,22 +3,25 @@ package model
 import (
 	"context"
 	"errors"
-	"time"
-
 	"github.com/influxdata/flux"
+	_ "github.com/influxdata/flux/builtin"
 	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/lang"
+	"github.com/influxdata/flux/memory"
 	"github.com/influxdata/flux/repl"
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/http"
 	"github.com/influxdata/influxdb/query"
 	"github.com/wolffcm/fluxcui"
+	"time"
 )
 
 type Config struct {
 	Addr               string
 	InsecureSkipVerify bool
 	Token              string
+	OrgID              string
+	Vanilla            bool
 }
 
 type fluxData struct {
@@ -30,19 +33,40 @@ type fluxData struct {
 	s  []fluxcui.Series
 }
 
-func NewFluxModel(cfg *Config) (fluxcui.Model, error) {
-	qs := &http.FluxQueryService{
-		Addr:               cfg.Addr,
-		Token:              cfg.Token,
-		InsecureSkipVerify: cfg.InsecureSkipVerify,
-	}
-	orgID, err := influxdb.IDFromString("fbe7cf21e65601a1")
+type vanillaQuerier struct{}
+
+func (vanillaQuerier) Query(ctx context.Context, deps flux.Dependencies, c flux.Compiler) (flux.ResultIterator, error) {
+	program, err := c.Compile(ctx)
 	if err != nil {
 		return nil, err
 	}
-	q := &query.REPLQuerier{
-		OrganizationID: *orgID,
-		QueryService:   qs,
+	ctx = deps.Inject(ctx)
+	alloc := &memory.Allocator{}
+	qry, err := program.Start(ctx, alloc)
+	if err != nil {
+		return nil, err
+	}
+	return flux.NewResultIteratorFromQuery(qry), nil
+}
+
+func NewFluxModel(cfg *Config) (fluxcui.Model, error) {
+	var q repl.Querier
+	if !cfg.Vanilla {
+		qs := &http.FluxQueryService{
+			Addr:               cfg.Addr,
+			Token:              cfg.Token,
+			InsecureSkipVerify: cfg.InsecureSkipVerify,
+		}
+		orgID, err := influxdb.IDFromString(cfg.OrgID)
+		if err != nil {
+			return nil, err
+		}
+		q = &query.REPLQuerier{
+			OrganizationID: *orgID,
+			QueryService:   qs,
+		}
+	} else {
+		q = &vanillaQuerier{}
 	}
 	return &fluxData{
 		querier: q,
@@ -83,24 +107,39 @@ func (f *fluxData) Query(fluxSrc string) error {
 			if ti < 0 {
 				ti = execute.ColIdx("_stop", t.Cols())
 				if ti < 0 {
-					return errors.New("missing _time column")
+					return errors.New("missing _time or _stop column")
 				}
 			}
 			vi := execute.ColIdx("_value", t.Cols())
 			if ti < 0 {
 				return errors.New("missing _value column")
 			}
+			vcm := t.Cols()[vi]
+			vct := vcm.Type
 
 			// TODO(cwolff): set up group key
 			if err := t.Do(func(cr flux.ColReader) error {
 				ts := cr.Times(ti)
-				vs := cr.Floats(vi)
 				for i := 0; i < cr.Len(); i++ {
-					if ts.IsValid(i) && vs.IsValid(i) {
+					var v float64
+					var isValid bool
+					switch vct {
+					case flux.TFloat:
+						v = cr.Floats(vi).Value(i)
+						isValid = cr.Floats(vi).IsValid(i)
+					case flux.TInt:
+						v = float64(cr.Ints(vi).Value(i))
+						isValid = cr.Ints(vi).IsValid(i)
+					case flux.TUInt:
+						v = float64(cr.UInts(vi).Value(i))
+						isValid = cr.UInts(vi).IsValid(i)
+					default:
+					}
+					if ts.IsValid(i) && isValid {
 						timestamp := time.Unix(0, ts.Int64Values()[i])
 						s.Data = append(s.Data, fluxcui.TimePoint{
 							T: timestamp,
-							V: vs.Float64Values()[i],
+							V: v,
 						})
 					}
 				}

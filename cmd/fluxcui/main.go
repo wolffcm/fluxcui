@@ -19,24 +19,42 @@ var (
 	flagToken      string
 	flagHost       string
 	flagSkipVerify bool
+	flagOrgID      string
+	flagVanilla    bool
+	flagVerbose    bool
 )
 
 func init() {
 	viper.SetEnvPrefix("INFLUX")
 
 	cmd.PersistentFlags().StringVarP(&flagToken, "token", "t", "", "API token to be used throughout client calls")
-	viper.BindEnv("TOKEN")
+	if err := viper.BindEnv("TOKEN"); err != nil {
+		panic(err)
+	}
 	if h := viper.GetString("TOKEN"); h != "" {
 		flagToken = h
 	}
 
+	cmd.PersistentFlags().StringVarP(&flagOrgID, "org-id", "o", "", "organization ID")
+	if err := viper.BindEnv("ORG_ID"); err != nil {
+		panic(err)
+	}
+	if h := viper.GetString("ORG_ID"); h != "" {
+		flagOrgID = h
+	}
+
 	cmd.PersistentFlags().StringVar(&flagHost, "host", "http://localhost:9999", "HTTP address of InfluxDB")
-	viper.BindEnv("HOST")
+	if err := viper.BindEnv("HOST"); err != nil {
+		panic(err)
+	}
 	if h := viper.GetString("HOST"); h != "" {
 		flagHost = h
 	}
 
-	cmd.PersistentFlags().BoolVar(&flagSkipVerify, "skip-verify", false, "SkipVerify controls whether a client verifies the server's certificate chain and host name.")
+	cmd.PersistentFlags().BoolVar(&flagSkipVerify, "skip-verify", false, "whether a client verifies the server's certificate chain and host name")
+
+	cmd.PersistentFlags().BoolVar(&flagVanilla, "vanilla", false, `use "vanilla" Flux; don't connect to InfluxDB`)
+	cmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, `log verbose output`)
 }
 
 func main() {
@@ -50,6 +68,9 @@ func run(cmd *cobra.Command, _ []string) {
 		Addr:               flagHost,
 		InsecureSkipVerify: flagSkipVerify,
 		Token:              flagToken,
+		OrgID:              flagOrgID,
+		Vanilla:            flagVanilla,
+		Verbose:            flagVerbose,
 	})
 	if err != nil {
 		cmd.PrintErr(err)

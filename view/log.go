@@ -19,11 +19,11 @@ func (c *cui) doLogView(g *gocui.Gui, x0, y0, x1, y1 int) error {
 	return nil
 }
 
-func writeError(g *gocui.Gui, userErr error) error {
-	return writeMessage(g, userErr.Error())
+func logError(g *gocui.Gui, userErr error) error {
+	return logMessage(g, userErr.Error())
 }
 
-func writeMessage(g *gocui.Gui, msg string) error {
+func logMessage(g *gocui.Gui, msg string) error {
 	v, err := g.View(logView)
 	if err != nil {
 		return err
@@ -35,15 +35,22 @@ func writeMessage(g *gocui.Gui, msg string) error {
 	return nil
 }
 
-func mustWriteMessage(g *gocui.Gui, msg string) {
-	if err := writeMessage(g, msg); err != nil {
+func mustLogMessage(g *gocui.Gui, msg string) {
+	if err := logMessage(g, msg); err != nil {
 		panic(err)
 	}
 }
 
-func mustWriteMessagef(g *gocui.Gui, format string, args ...interface{}) {
+func mustLogMessagef(g *gocui.Gui, format string, args ...interface{}) {
 	msg := fmt.Sprintf(fmt.Sprintf(format, args...))
-	if err := writeMessage(g, msg); err != nil {
+	if err := logMessage(g, msg); err != nil {
 		panic(err)
 	}
+}
+
+func (c *cui) logVerbose(g *gocui.Gui, msg string) error {
+	if c.cfg.Verbose {
+		return logMessage(g, msg)
+	}
+	return nil
 }

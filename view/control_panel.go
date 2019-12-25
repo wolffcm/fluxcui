@@ -118,7 +118,7 @@ func getAction(items []menuItem, name string) menuAction {
 }
 
 func runQuery(g *gocui.Gui, c *cui) error {
-	if err := writeMessage(g, "executing query"); err != nil {
+	if err := c.logVerbose(g, "executing query"); err != nil {
 		return err
 	}
 	ev, err := g.View(editorView)
@@ -127,7 +127,7 @@ func runQuery(g *gocui.Gui, c *cui) error {
 	}
 	q := ev.Buffer()
 	if err := c.c.Query(q); err != nil {
-		if err := writeError(g, err); err != nil {
+		if err := logError(g, err); err != nil {
 			return err
 		}
 	}
@@ -135,7 +135,7 @@ func runQuery(g *gocui.Gui, c *cui) error {
 }
 
 func clear(g *gocui.Gui, c *cui) error {
-	if err := writeMessage(g, "clearing"); err != nil {
+	if err := c.logVerbose(g, "clearing"); err != nil {
 		return err
 	}
 

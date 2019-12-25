@@ -27,14 +27,17 @@ type canvasPoint struct {
 }
 
 type lineGraph struct {
+	cui *cui
+
 	vxSize, vySize int
 	ts             time.Time
 
 	canvas drawille.Canvas
 }
 
-func newLineGraph() *lineGraph {
+func newLineGraph(cui *cui) *lineGraph {
 	return &lineGraph{
+		cui:    cui,
 		canvas: drawille.NewCanvas(drawille.SaturateOnOverwrite()),
 	}
 }
@@ -47,10 +50,10 @@ func (lg *lineGraph) update(g *gocui.Gui, m fluxcui.Model) error {
 
 	vxd, vyd := v.Size()
 	if lg.vxSize == vxd && lg.vySize == vyd && !m.Timestamp().After(lg.ts) {
-		mustWriteMessage(g, "skipping update")
-		return nil
-	} else {
-		mustWriteMessage(g, "updating")
+		return lg.cui.logVerbose(g, "skipping update")
+
+	} else if err := lg.cui.logVerbose(g, "updating"); err != nil {
+		return err
 	}
 
 	cxd, cyd := vxd*2, vyd*4
@@ -102,7 +105,7 @@ func (lg *lineGraph) render(m fluxcui.Model, xd, yd int, w io.Writer) error {
 	}
 
 	for _, x := range xTicks {
-		txt := x.Format(time.RFC3339)
+		txt := x.Format("15:04:05")
 		cp := translator(fluxcui.TimePoint{T: x, V: md.minV})
 		ln := len(txt)
 		cp.X -= float64(ln/2) * 2
@@ -206,13 +209,13 @@ func chooseXTicks(md *Metadata) []time.Time {
 	})
 	xTicks := make([]time.Time, 0, 5)
 	if i >= len(ds) {
-		// long interval (more than a week) choose ticks at 1/3 and 2/3 of time range
-		t1 := d / 3
-		t2 := 2 * d / 3
-		xTicks = append(xTicks, md.minT.Add(t1), md.minT.Add(t2))
+		// Sub ns interval??
+		xTicks = append(xTicks, start)
+		return xTicks
 	} else {
 		truncDur := ds[i]
-		for tick := start.Truncate(truncDur); tick.Before(stop); tick = tick.Add(truncDur) {
+		tick := start.Truncate(truncDur)
+		for ; tick.Before(stop); tick = tick.Add(truncDur) {
 			if tick.After(start) {
 				xTicks = append(xTicks, tick)
 			}
@@ -225,8 +228,12 @@ func chooseXTicks(md *Metadata) []time.Time {
 func chooseYTicks(md *Metadata) []float64 {
 	yRange := md.maxV - md.minV
 	unit := math.Pow(10.0, math.Trunc(math.Log10(yRange)))
+	if yRange/unit <= 2 {
+		unit /= 2
+	}
 	yTicks := make([]float64, 0, 5)
 	v := unit * math.Trunc(md.minV/unit)
+
 	for ; v < md.maxV; v += unit {
 		if v > md.minV {
 			yTicks = append(yTicks, v)

@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	EditorText string
+	Verbose    bool
 }
 
 type cui struct {
@@ -18,12 +19,13 @@ type cui struct {
 }
 
 func NewView(cfg *Config, m fluxcui.Model, c fluxcui.Controller) fluxcui.View {
-	return &cui{
+	cui := &cui{
 		cfg: cfg,
 		m:   m,
 		c:   c,
-		lg:  newLineGraph(),
 	}
+	cui.lg = newLineGraph(cui)
+	return cui
 }
 
 func (c *cui) Run() error {
@@ -65,7 +67,7 @@ const (
 func (c *cui) layout(g *gocui.Gui) error {
 	defer func() {
 		if p := recover(); p != nil {
-			mustWriteMessagef(g, "panic: %v", p)
+			mustLogMessagef(g, "panic: %v", p)
 		}
 	}()
 
