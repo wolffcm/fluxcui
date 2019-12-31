@@ -9,7 +9,8 @@ import (
 )
 
 func TestLineGraph_render(t *testing.T) {
-	lg := newLineGraph()
+	cui := &cui{}
+	lg := newLineGraph(cui)
 	b := &bytes.Buffer{}
 	if err := lg.render(mock.Model{}, 320, 96, b); err != nil {
 		t.Fatal(err)
@@ -101,7 +102,9 @@ func TestLineGraph_chooseYTicks(t *testing.T) {
 				maxV: 1,
 			},
 			wantYTicks: []float64{
+				-0.5,
 				0,
+				0.5,
 			},
 		},
 	}

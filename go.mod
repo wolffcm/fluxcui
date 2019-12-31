@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/google/go-cmp v0.3.1
 	github.com/influxdata/flux v0.57.0
 	github.com/influxdata/influxdb v1.5.1-0.20191213220711-88468822e23d
@@ -16,4 +17,6 @@ require (
 	github.com/wolffcm/drawille-go v0.0.0-20191221022539-4afb83ac080b
 )
 
-replace github.com/wolffcm/drawille-go => ../drawille-go
+replace github.com/chzyer/readline => ../../chzyer/readline
+
+replace github.com/jroimartin/gocui => ../../jroimartin/gocui
